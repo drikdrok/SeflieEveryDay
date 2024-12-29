@@ -42,8 +42,13 @@ def draw_eyes_on_image(image_path):
                 y_eye = landmarks.part(n).y
                 cv2.circle(frame, (x_eye, y_eye), 2, (0, 255, 0), -1)
 
-            left_eye = ((landmarks.part(36).x, landmarks.part(36).y), (landmarks.part(39).x, landmarks.part(39).y))
-            right_eye = ((landmarks.part(42).x, landmarks.part(42).y), (landmarks.part(45).x, landmarks.part(45).y))
+
+            left_eye_center = ((landmarks.part(36).x + landmarks.part(39).x) // 2, (landmarks.part(36).y + landmarks.part(39).y) // 2)
+
+            right_eye_center = ((landmarks.part(42).x + landmarks.part(45).x) // 2, (landmarks.part(42).y + landmarks.part(45).y) // 2)
+
+            #left_eye = ((landmarks.part(36).x, landmarks.part(36).y), (landmarks.part(39).x, landmarks.part(39).y))
+            #right_eye = ((landmarks.part(42).x, landmarks.part(42).y), (landmarks.part(45).x, landmarks.part(45).y))
 
     # Convert the frame to RGB for displaying
     #frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -53,7 +58,7 @@ def draw_eyes_on_image(image_path):
     #pil_image.show()
     #print("Success")
 
-    return (left_eye, right_eye)
+    return {"width": w, "height": h, "left_eye": left_eye_center, "right_eye": right_eye_center}
 
 # Example usage:
 #draw_eyes_on_image('uploaded_images/20220727_220157.jpg')

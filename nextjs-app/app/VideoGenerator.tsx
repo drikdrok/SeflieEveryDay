@@ -4,13 +4,22 @@ import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile, toBlobURL } from "@ffmpeg/util";
 import { useRef, useState, useEffect } from "react";
 
+import { resizeImageFile } from "./resizeImage";
+
 // Define the type for the component props
 interface VideoGeneratorProps {
     images: File[]; // Or you can use string[] if images are URLs
+    imageInfo: ImageInfo[];
 }
 
+export interface ImageInfo {
+  width: number;
+  height: number;
+  left_eye: number[];
+  right_eye: number[];
+}
 
-const VideoGenerator: React.FC<VideoGeneratorProps> = ({ images }) => {
+const VideoGenerator: React.FC<VideoGeneratorProps> = ({ images, imageInfo }) => {
   const [loaded, setLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const ffmpegRef = useRef(new FFmpeg());
@@ -49,31 +58,53 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ images }) => {
     console.log("Generating video...");
     console.log("Images:", images);
 
+    console.log("eyePositions:", imageInfo);
+
+    const newWidth = 640;
+
+    const compressionFactor = imageInfo[0].width / newWidth;
+
+    const baselineX = (imageInfo[0].left_eye[0] + imageInfo[0].right_eye[0]) / 2 / compressionFactor;
+    const baselineY = (imageInfo[0].left_eye[1] + imageInfo[0].right_eye[1]) / 2 / compressionFactor;
+
+
     // Initialize FFmpeg using the correct method
     const ffmpeg = ffmpegRef.current;
 
     // Fetch and load each image into FFmpeg's virtual file system
     for (let i = 0; i < images.length; i++) {
-      const imageUrl = URL.createObjectURL(images[i]);
-      const imageFileName = `image${i+1}.png`;
+      //const imageUrl = URL.createObjectURL(images[i]);
+      let newHeight = Math.floor(imageInfo[i].height / compressionFactor);
+      if (newHeight % 2 == 1)
+        newHeight -= 1;
+
+      const centerX = (imageInfo[i].left_eye[0] + imageInfo[i].right_eye[0]) / 2 / compressionFactor;
+      const centerY = (imageInfo[i].left_eye[1] + imageInfo[i].right_eye[1]) / 2 / compressionFactor;
+
+      console.log("newHeight:", newHeight);
+      const resizedFile = await resizeImageFile(images[i], newWidth, newHeight, baselineX, baselineY, centerX, centerY);
+      const imageFileName = `image${i+1}.jpg`;
 
       // Fetch the image file and write it to the virtual file system
-      await ffmpeg.writeFile(imageFileName, await fetchFile(imageUrl));
+      await ffmpeg.writeFile(imageFileName, await fetchFile(resizedFile));
     }
 
     // Create a video from the images (you can adjust the frame rate and other parameters)
     await ffmpeg.exec([
         '-y',
-        '-framerate', '1', // 1 image per second
-        '-i', 'image%d.png', // Input images, where %d is replaced with the index (1.jpg, 2.jpg, ...)
+        '-framerate', '5', // 1 image per second
+        '-i', 'image%d.jpg', // Input images, where %d is replaced with the index (1.jpg, 2.jpg, ...)
         '-c:v', 'libx264', // Video codec (libx264 is a common choice)
         '-pix_fmt', 'yuv420p', // Pixel format for compatibility
         'output.mp4', // Output file
+        '-preset', 'ultrafast',
+        '-vf', 'scale=640:480',
         '-frames:v', images.length.toString(),
         '-shortest',
         ]
     );
 
+    console.log("Reading video file...");
     // Retrieve the video file from FFmpeg's virtual file system
     const videoData = await ffmpeg.readFile('output.mp4');
 

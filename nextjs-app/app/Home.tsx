@@ -2,10 +2,12 @@
 import { Accept, useDropzone } from 'react-dropzone';
 import { useState } from 'react';
 import VideoGenerator from './VideoGenerator';
+import { ImageInfo } from './VideoGenerator';
 
 export default function Home() {
   const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [eyePositions, setEyePositions] = useState<ImageInfo[] | null>(null);
 
   const api_url = 'http://127.0.0.1:5000/upload_images';
 
@@ -47,6 +49,8 @@ export default function Home() {
       const data = await response.json();
       alert('Upload successful!');
       console.log(data);
+      setEyePositions(data["eye_position"]);
+
     } catch (error) {
       alert('Error uploading images');
       console.error(error);
@@ -80,6 +84,7 @@ export default function Home() {
               src={URL.createObjectURL(file)}
               alt={`Uploaded image ${index}`}
               style={{ width: '100%', height: 'auto', borderRadius: '8px' }}
+              id={`image${index}`}
             />
           </div>
         ))}
@@ -101,7 +106,9 @@ export default function Home() {
         >
           {isUploading ? 'Uploading...' : 'Upload Images'}
         </button>
-        <VideoGenerator images={files} />
+        {eyePositions && (
+          <VideoGenerator images={files} imageInfo={eyePositions} />
+        )}
       </div>
     </div>
   );
