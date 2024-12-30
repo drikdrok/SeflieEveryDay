@@ -4,6 +4,8 @@ import os
 from PIL import Image
 import io
 
+from threading import Thread
+
 from flask_cors import CORS
 
 import eye_coords
@@ -21,6 +23,30 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 # Function to check if the file is allowed
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+progress_dict = {}
+finished_dict = {}
+
+def analyze_images(job_id, files):
+    if not files:
+        finished_dict[job_id] = jsonify({"error": "No files selected"})
+        return
+
+    print("Analysing ", len(files), " images")
+    
+    eye_positions = []
+    completed = 0
+    for file in files:
+        print("analysing ", file)
+        coords = eye_coords.draw_eyes_on_image(file)
+        eye_positions.append(coords)
+        completed += 1
+        progress_dict[job_id] = completed / len(files) * 100
+
+    print("Finished processing images")
+    finished_dict[job_id] = {"files": files, "eye_position": eye_positions}
+    return
 
 # Route to handle multiple image uploads
 @app.route('/upload_images', methods=['POST'])
@@ -55,13 +81,38 @@ def upload_images():
             uploaded_files.append(filepath)
         else:
             return jsonify({"error": f"Invalid file type: {file.filename}"}), 400
-    
-    eye_positions = []
-    for file in uploaded_files:
-        coords = eye_coords.draw_eyes_on_image(file)
-        eye_positions.append(coords)
 
-    return jsonify({"message": "Images uploaded successfully", "files": uploaded_files, "eye_position": eye_positions}), 200
+     # 2. "Start" the task in a separate thread
+    job_id = "some_unique_id"  # you can generate a random UUID
+    progress_dict[job_id] = 0
+
+    # Start a separate thread to handle the long processing
+    thread = Thread(target=analyze_images, args=(job_id, uploaded_files))
+    thread.start()
+
+    # 3. Return the job_id immediately
+    return jsonify({"job_id": job_id}), 200
+
+@app.route('/progress/<job_id>', methods=['GET'])
+def get_progress(job_id):
+    if job_id not in progress_dict:
+        return jsonify({"error": "Invalid job_id"}), 404
+
+    return jsonify({
+        "progress": progress_dict[job_id]
+    }), 200    
+
+
+@app.route("/get_info/<job_id>", methods=['GET'])
+def get_info(job_id):
+    if job_id not in finished_dict:
+        return jsonify({"error": "Invalid job_id"}), 404
+
+    return jsonify({
+        "message": "Images uploaded successfully",
+        "data": finished_dict[job_id]
+    }), 200
+
 
 
 #Start

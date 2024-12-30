@@ -1,6 +1,6 @@
 "use client";
 import { Accept, useDropzone } from 'react-dropzone';
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useState, useRef } from 'react';
 import VideoGenerator from './VideoGenerator';
 import { ImageInfo } from './VideoGenerator';
 import {Slider} from "@nextui-org/slider";
@@ -23,6 +23,8 @@ export default function Home() {
   const [fileURLS, setFileURLS] = useState<string[]>([]);
 
   const [isUploading, setIsUploading] = useState(false);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const intervalRef = useRef<number | null>(null);
 
   const [loadingBar , setLoadingBar] = useState<LoadingBar>({show: false, loadText: "", loadProgress: 0});
 
@@ -78,7 +80,7 @@ export default function Home() {
       return;
     }
 
-    setLoadingBar({show: true, loadText: "Uploading and analyzing images...", loadProgress: 0});
+    setLoadingBar({show: true, loadText: "Uploading images...", loadProgress: 0});
 
     const formData = new FormData();
     files.forEach((file) => {
@@ -97,16 +99,58 @@ export default function Home() {
         },
       });
       
-      alert('Upload successful!');
+      //alert('Upload successful!');
       console.log(response.data);
+
+      const { job_id } = response.data;
+      setJobId(job_id);
+
+      // 2. Start polling for the job’s processing progress
+      if (job_id) {
+        startPolling(job_id);
+        setLoadingBar({show: true, loadText: "Analyzing images...", loadProgress: 0}); 
+      }
       // do something with response.data["eye_position"]
 
     } catch (error) {
       alert('Error uploading images');
       console.error(error);
     } finally {
-      setLoadingBar({show: false, loadText: "", loadProgress: 0}); 
+      //setLoadingBar({show: false, loadText: "", loadProgress: 0}); 
     }
+  };
+
+  const startPolling = (jobId: string) => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    intervalRef.current = window.setInterval(async () => {
+      try {
+        const resp = await axios.get(`http://localhost:5000/progress/${jobId}`);
+        const { progress } = resp.data;
+        setLoadingBar((prev) => ({ ...prev, loadProgress: progress }));
+        console.log('Progress:', progress);
+
+        // Stop polling if done
+        if (progress >= 100) {
+          clearInterval(intervalRef.current!);
+          intervalRef.current = null;
+          try {
+            const resp = await axios.get(`http://localhost:5000/get_info/${jobId}`);
+            console.log('Final Response:', resp.data);
+            const eye_position = resp.data["data"]["eye_position"];
+            console.log('Eye Positions:', eye_position);
+            setEyePositions(eye_position);
+            setLoadingBar({show: false, loadText: "", loadProgress: 0}); 
+          }catch (error) {
+            console.error('Get Info error:', error);
+          }
+        }
+      } catch (error) {
+        console.error('Polling error:', error);
+        clearInterval(intervalRef.current!);
+      }
+    }, 1000);
   };
 
 
