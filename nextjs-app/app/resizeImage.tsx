@@ -2,10 +2,13 @@ export async function resizeImageFile(
     file: File,
     targetWidth: number,
     targetHeight: number,
+    offsetX: number,
+    offsetY: number,
+    scale: number,
     baselineX: number,
     baselineY: number,
     centerX: number,
-    centerY: number
+    centerY: number,
   ): Promise<File> {
     return new Promise((resolve, reject) => {
       // We’ll read the file into an <img>, then draw onto a canvas
@@ -21,13 +24,20 @@ export async function resizeImageFile(
           return reject(new Error("Could not create 2D context"));
         }
 
-        const diffX = baselineX - centerX;
-        const diffY = baselineY - centerY;
-  
+        
         // Draw the image onto the canvas at the new size
-        ctx.drawImage(img, diffX, diffY, targetWidth, targetHeight);
-        //ctx.fillStyle = "red";
-        //ctx.fillRect(baselineX - 5, baselineY - 5, 10, 10);
+        ctx.drawImage(img, offsetX, offsetY, targetWidth * scale, targetHeight * scale);
+        
+        /*
+        ctx.save();
+        ctx.fillStyle = "blue";
+        ctx.fillRect(centerX - 2, centerY - 2, 4, 4);
+
+        ctx.restore();
+
+        ctx.fillStyle = "red";
+        ctx.fillRect(baselineX - 5, baselineY - 5, 10, 10);
+        */
   
         // Convert the canvas to a Blob (you can tweak `quality` if you want)
         canvas.toBlob(

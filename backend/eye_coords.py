@@ -47,6 +47,8 @@ def draw_eyes_on_image(image_path):
 
             right_eye_center = ((landmarks.part(42).x + landmarks.part(45).x) // 2, (landmarks.part(42).y + landmarks.part(45).y) // 2)
 
+            eye_width = landmarks.part(39).x - landmarks.part(36).x
+
             #left_eye = ((landmarks.part(36).x, landmarks.part(36).y), (landmarks.part(39).x, landmarks.part(39).y))
             #right_eye = ((landmarks.part(42).x, landmarks.part(42).y), (landmarks.part(45).x, landmarks.part(45).y))
 
@@ -58,7 +60,7 @@ def draw_eyes_on_image(image_path):
     #pil_image.show()
     #print("Success")
 
-    return {"width": w, "height": h, "left_eye": left_eye_center, "right_eye": right_eye_center}
+    return {"width": w, "height": h, "left_eye": left_eye_center, "right_eye": right_eye_center, "eye_width": eye_width}    
 
 # Example usage:
 #draw_eyes_on_image('uploaded_images/20220727_220157.jpg')

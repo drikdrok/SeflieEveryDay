@@ -19,6 +19,7 @@ export interface ImageInfo {
   height: number;
   left_eye: number[];
   right_eye: number[];
+  eye_width: number;
 }
 
 const VideoGenerator: React.FC<VideoGeneratorProps> = ({ images, imageInfo, frameRate, readyToGenerate }) => {
@@ -74,6 +75,9 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ images, imageInfo, fram
     const baselineX = (imageInfo[0].left_eye[0] + imageInfo[0].right_eye[0]) / 2 / compressionFactor;
     const baselineY = (imageInfo[0].left_eye[1] + imageInfo[0].right_eye[1]) / 2 / compressionFactor;
 
+    const baselineEyeWidth = imageInfo[0].eye_width;
+
+    console.log("Baseline: ", baselineX, baselineY);
 
     // Initialize FFmpeg using the correct method
     const ffmpeg = ffmpegRef.current;
@@ -84,11 +88,17 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ images, imageInfo, fram
       let newHeight = Math.floor(imageInfo[i].height / compressionFactor);
       if (newHeight % 2 == 1)
         newHeight -= 1;
+      
+      const scale = (baselineEyeWidth / imageInfo[i].eye_width );
 
-      const centerX = (imageInfo[i].left_eye[0] + imageInfo[i].right_eye[0]) / 2 / compressionFactor;
-      const centerY = (imageInfo[i].left_eye[1] + imageInfo[i].right_eye[1]) / 2 / compressionFactor;
+      const centerX = (imageInfo[i].left_eye[0] + imageInfo[i].right_eye[0]) / 2 / compressionFactor * scale;
+      const centerY = (imageInfo[i].left_eye[1] + imageInfo[i].right_eye[1]) / 2 / compressionFactor * scale;
 
-      const resizedFile = await resizeImageFile(images[i], newWidth, newHeight, baselineX, baselineY, centerX, centerY);
+      const offsetX = baselineX - centerX;
+      const offsetY = baselineY - centerY;
+
+
+      const resizedFile = await resizeImageFile(images[i], newWidth, newHeight, offsetX, offsetY, scale, baselineX, baselineY, centerX, centerY);
       const imageFileName = `image${i+1}.jpg`;
 
       // Fetch the image file and write it to the virtual file system
