@@ -9,8 +9,9 @@ import { resizeImageFile } from "./resizeImage";
 // Define the type for the component props
 interface VideoGeneratorProps {
     images: File[]; // Or you can use string[] if images are URLs
-    imageInfo: ImageInfo[];
+    imageInfo: ImageInfo[] | null;
     frameRate: number;
+    readyToGenerate: boolean
 }
 
 export interface ImageInfo {
@@ -20,7 +21,7 @@ export interface ImageInfo {
   right_eye: number[];
 }
 
-const VideoGenerator: React.FC<VideoGeneratorProps> = ({ images, imageInfo, frameRate }) => {
+const VideoGenerator: React.FC<VideoGeneratorProps> = ({ images, imageInfo, frameRate, readyToGenerate }) => {
   const [loaded, setLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const ffmpegRef = useRef(new FFmpeg());
@@ -54,6 +55,11 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ images, imageInfo, fram
 
 
   const generateVideo = async () => {
+    if (imageInfo === null) {
+      console.error("Image info is null");
+      return;
+    }
+
     setIsLoading(true);
 
     console.log("Generating video...");
@@ -127,23 +133,29 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ images, imageInfo, fram
     load();
   }, []);
 
-  return loaded ? (
+  return (
     <div className="flex flex-col items-center">
       <video style={{height:300}} ref={videoRef} controls></video>
       <br />
-      <button onClick={generateVideo}>Generate Video</button>
+      { readyToGenerate && 
+      <button onClick={generateVideo}
+        disabled={!readyToGenerate}
+        style={{
+          padding: '1rem 2rem',
+          fontSize: '16px',
+          backgroundColor: '#0070f3',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+        }}
+      > Generate Video</button>
+      }     
       {downloadLink && (
         <a href={downloadLink} download="generated_video.mp4">
           Download Video
         </a>
       )}
       <p ref={messageRef}></p>
-    </div>
-  ) : (
-    <div>
-        <span className="animate-spin ml-3">
-            <p>Loading...</p>
-        </span>
     </div>
   );
 }

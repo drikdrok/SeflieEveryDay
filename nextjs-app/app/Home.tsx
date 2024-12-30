@@ -9,6 +9,7 @@ import imageCompression from 'browser-image-compression';
 import Image from 'next/image';
 
 import axios from 'axios';
+import { read } from 'fs';
 
 
 interface LoadingBar{
@@ -26,6 +27,8 @@ export default function Home() {
   const [jobId, setJobId] = useState<string | null>(null);
   const intervalRef = useRef<number | null>(null);
 
+  const [readyToGenerate, setReadyToGenerate] = useState(false);
+
   const [loadingBar , setLoadingBar] = useState<LoadingBar>({show: false, loadText: "", loadProgress: 0});
 
   const [eyePositions, setEyePositions] = useState<ImageInfo[] | null>(null);
@@ -38,6 +41,17 @@ export default function Home() {
     const newUrls = files.map((file) => URL.createObjectURL(file));
     setFileURLS(newUrls);
   }, [files]);
+
+
+  useEffect(() => {
+    console.log("yse");
+    if (eyePositions !== null) {
+      if (eyePositions.length > 0) {
+        setReadyToGenerate(true);
+        console.log("Ready to generate");
+      }
+    }
+  }, [eyePositions]);
 
   const onDrop = async (acceptedFiles: File[]) => {
     const compressedFiles: File[] = [];
@@ -158,7 +172,8 @@ export default function Home() {
     <div>
       <h1>Seflie Every Day</h1>
       <div style={{ display: 'flex', gap: '2rem', padding: '2rem'  }}>
-        <div  className='flex-shrink-1 p-6 bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700'>
+        <div  className='flex-shrink-1 min-w-80  w-80 p-6 bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700'>
+          <h1>Settings</h1>
           <div
             {...getRootProps()}
             style={{
@@ -166,8 +181,6 @@ export default function Home() {
               padding: '2rem',
               cursor: 'pointer',
               textAlign: 'center',
-              minWidth: '300px',
-              maxWidth: "300px",
               borderRadius: '8px',
             }}
           >
@@ -201,7 +214,7 @@ export default function Home() {
                 cursor: isUploading ? 'not-allowed' : 'pointer',
               }}
             >
-              {loadingBar.show ? 'Loading...' : 'Upload Images'}
+              {loadingBar.show ? 'Loading...' : 'Analyze Images'}
             </button>
           </div>
           <div>
@@ -219,7 +232,14 @@ export default function Home() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexWrap: "wrap",  gap: '10px', overflowY: 'auto', height: '400px' }}>
+        <div  className='flex-shrink-1 min-w-80 w-80  p-6 bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700'>
+          <h1>Final Video</h1>
+          <div>
+            <VideoGenerator images={files} imageInfo={eyePositions} frameRate={frameRate} readyToGenerate={readyToGenerate} />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: "wrap",  gap: '10px', overflowY: 'auto', maxHeight: '500px' }}>
           {fileURLS.map((url, index) => (
             <div key={index} style={{}}>
               <Image
@@ -234,13 +254,8 @@ export default function Home() {
             </div>
           ))}
         </div>
-
-    </div>
-    <div>
-      {eyePositions && (
-        <VideoGenerator images={files} imageInfo={eyePositions} frameRate={frameRate} />
-      )}
-    </div>
+      </div>
+    
     </div>
   );
 }
