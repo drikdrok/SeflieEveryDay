@@ -1,19 +1,70 @@
 "use client";
 import { Accept, useDropzone } from 'react-dropzone';
-import { useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import VideoGenerator from './VideoGenerator';
 import { ImageInfo } from './VideoGenerator';
+import {Slider} from "@nextui-org/slider";
+import {Progress} from "@nextui-org/progress";
+import imageCompression from 'browser-image-compression';
+import Image from 'next/image';
+
+import axios from 'axios';
+
+
+interface LoadingBar{
+  show: boolean;
+  loadText: string;
+  loadProgress: number;
+}
 
 export default function Home() {
+  
   const [files, setFiles] = useState<File[]>([]);
+  const [fileURLS, setFileURLS] = useState<string[]>([]);
+
   const [isUploading, setIsUploading] = useState(false);
+
+  const [loadingBar , setLoadingBar] = useState<LoadingBar>({show: false, loadText: "", loadProgress: 0});
+
   const [eyePositions, setEyePositions] = useState<ImageInfo[] | null>(null);
+  
+  const [frameRate, setFrameRate] = useState(10);
 
   const api_url = 'http://127.0.0.1:5000/upload_images';
 
-  const onDrop = (acceptedFiles: File[]) => {
-    // Add new files to the existing files array
-    setFiles((prevFiles) => [...prevFiles, ...acceptedFiles]);
+  useEffect(() => {
+    const newUrls = files.map((file) => URL.createObjectURL(file));
+    setFileURLS(newUrls);
+  }, [files]);
+
+  const onDrop = async (acceptedFiles: File[]) => {
+    const compressedFiles: File[] = [];
+    const totalFiles = acceptedFiles.length;
+
+    let completed = 0; // from 0 to totalFiles
+
+    setLoadingBar({show: true, loadText: "Compressing images...", loadProgress: 0});
+
+    for (const file of acceptedFiles) {
+      // Adjust options as desired
+      const options = { 
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1024,
+        useWebWorker: true,
+      };
+      const compressedFile = await imageCompression(file, options);
+      completed += 1;
+      
+      setLoadingBar((prev) => ({ ...prev, loadProgress: completed / totalFiles * 100 }));
+
+
+      compressedFiles.push(new File([compressedFile], file.name));
+    }
+
+    setLoadingBar({show: false, loadText: "", loadProgress: 0}); 
+
+    setFiles((prevFiles) => [...prevFiles, ...compressedFiles]);
+    // setFiles((prevFiles) => [...prevFiles, ...acceptedFiles]);
   };
 
   const { getRootProps, getInputProps } = useDropzone({
@@ -27,89 +78,127 @@ export default function Home() {
       return;
     }
 
-    setIsUploading(true);
+    setLoadingBar({show: true, loadText: "Uploading and analyzing images...", loadProgress: 0});
 
     const formData = new FormData();
-
-    // Append all files to the FormData object
     files.forEach((file) => {
       formData.append('images', file);
     });
 
     try {
-      const response = await fetch(api_url, {
-        method: 'POST',
-        body: formData,
+      const response = await axios.post(api_url, formData, {
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const progress = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            setLoadingBar((prev) => ({ ...prev, loadProgress: progress }));
+          }
+        },
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to upload images');
-      }
-
-      const data = await response.json();
+      
       alert('Upload successful!');
-      console.log(data);
-      setEyePositions(data["eye_position"]);
+      console.log(response.data);
+      // do something with response.data["eye_position"]
 
     } catch (error) {
       alert('Error uploading images');
       console.error(error);
     } finally {
-      setIsUploading(false);
+      setLoadingBar({show: false, loadText: "", loadProgress: 0}); 
     }
   };
 
 
   return (
-    <div style={{ display: 'flex', gap: '2rem', padding: '2rem' }}>
-      <div
-        {...getRootProps()}
-        style={{
-          border: '2px dashed #0070f3',
-          padding: '2rem',
-          cursor: 'pointer',
-          textAlign: 'center',
-          width: '300px',
-          borderRadius: '8px',
-        }}
-      >
-        <input {...getInputProps()} />
-        <p>Drag & drop some images here, or click to select images</p>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '1rem' }}>
-        {files.map((file, index) => (
-          <div key={index} style={{ width: '100%', height: 'auto' }}>
-            <img
-              src={URL.createObjectURL(file)}
-              alt={`Uploaded image ${index}`}
-              style={{ width: '100%', height: 'auto', borderRadius: '8px' }}
-              id={`image${index}`}
+    <div>
+      <h1>Seflie Every Day</h1>
+      <div style={{ display: 'flex', gap: '2rem', padding: '2rem'  }}>
+        <div  className='flex-shrink-1 p-6 bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700'>
+          <div
+            {...getRootProps()}
+            style={{
+              border: '2px dashed #0070f3',
+              padding: '2rem',
+              cursor: 'pointer',
+              textAlign: 'center',
+              minWidth: '300px',
+              maxWidth: "300px",
+              borderRadius: '8px',
+            }}
+          >
+            <input {...getInputProps()} />
+            <p>Drag & drop some images here, or click to select images</p>
+          </div>
+          <div className="pt-6">
+            <Slider
+              className="max-w-md"
+              color="primary"
+              defaultValue={10}
+              label="Frame Rate"
+              maxValue={30}
+              minValue={1}
+              size="md"
+              step={1}
+              onChange={(value) => setFrameRate(Array.isArray(value) ? value[0] : value)}
             />
           </div>
-        ))}
-      </div>
+          <div className="flex justify-center pt-6">
+            <button
+              onClick={handleUpload}
+              disabled={loadingBar.show}
+              style={{
+                padding: '1rem 2rem',
+                fontSize: '16px',
+                backgroundColor: '#0070f3',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: isUploading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {loadingBar.show ? 'Loading...' : 'Upload Images'}
+            </button>
+          </div>
+          <div>
+            {
+              loadingBar.show &&
+              <Progress
+                label={loadingBar.loadText}
+                className="max-w-md"
+                color="success"
+                showValueLabel={true}
+                size="md"
+                value={loadingBar.loadProgress}
+              />
+            }
+          </div>
+        </div>
 
-      <div>
-        <button
-          onClick={handleUpload}
-          disabled={isUploading}
-          style={{
-            padding: '1rem 2rem',
-            fontSize: '16px',
-            backgroundColor: '#0070f3',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: isUploading ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {isUploading ? 'Uploading...' : 'Upload Images'}
-        </button>
-        {eyePositions && (
-          <VideoGenerator images={files} imageInfo={eyePositions} />
-        )}
-      </div>
+        <div style={{ display: 'flex', flexWrap: "wrap",  gap: '10px', overflowY: 'auto', height: '400px' }}>
+          {fileURLS.map((url, index) => (
+            <div key={index} style={{}}>
+              <Image
+                src={url}
+                alt={`Uploaded image ${index}`}
+                width={100}
+                height={100}
+                style={{ width: "200px", borderRadius: '8px' }}
+                id={`image${index}`}
+                loading='lazy'
+              />
+            </div>
+          ))}
+        </div>
+
+    </div>
+    <div>
+      {eyePositions && (
+        <VideoGenerator images={files} imageInfo={eyePositions} frameRate={frameRate} />
+      )}
+    </div>
     </div>
   );
 }
+
+

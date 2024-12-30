@@ -10,6 +10,7 @@ import { resizeImageFile } from "./resizeImage";
 interface VideoGeneratorProps {
     images: File[]; // Or you can use string[] if images are URLs
     imageInfo: ImageInfo[];
+    frameRate: number;
 }
 
 export interface ImageInfo {
@@ -19,7 +20,7 @@ export interface ImageInfo {
   right_eye: number[];
 }
 
-const VideoGenerator: React.FC<VideoGeneratorProps> = ({ images, imageInfo }) => {
+const VideoGenerator: React.FC<VideoGeneratorProps> = ({ images, imageInfo, frameRate }) => {
   const [loaded, setLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const ffmpegRef = useRef(new FFmpeg());
@@ -81,7 +82,6 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ images, imageInfo }) =>
       const centerX = (imageInfo[i].left_eye[0] + imageInfo[i].right_eye[0]) / 2 / compressionFactor;
       const centerY = (imageInfo[i].left_eye[1] + imageInfo[i].right_eye[1]) / 2 / compressionFactor;
 
-      console.log("newHeight:", newHeight);
       const resizedFile = await resizeImageFile(images[i], newWidth, newHeight, baselineX, baselineY, centerX, centerY);
       const imageFileName = `image${i+1}.jpg`;
 
@@ -92,7 +92,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ images, imageInfo }) =>
     // Create a video from the images (you can adjust the frame rate and other parameters)
     await ffmpeg.exec([
         '-y',
-        '-framerate', '5', // 1 image per second
+        '-framerate', String(frameRate), // 1 image per second
         '-i', 'image%d.jpg', // Input images, where %d is replaced with the index (1.jpg, 2.jpg, ...)
         '-c:v', 'libx264', // Video codec (libx264 is a common choice)
         '-pix_fmt', 'yuv420p', // Pixel format for compatibility
@@ -128,7 +128,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({ images, imageInfo }) =>
   }, []);
 
   return loaded ? (
-    <div className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%]">
+    <div className="flex flex-col items-center">
       <video style={{height:300}} ref={videoRef} controls></video>
       <br />
       <button onClick={generateVideo}>Generate Video</button>
