@@ -129,6 +129,7 @@ export default function Home() {
     } catch (error) {
       alert('Error uploading images');
       console.error(error);
+      setLoadingBar({show: false, loadText: "", loadProgress: 0}); 
     } finally {
       //setLoadingBar({show: false, loadText: "", loadProgress: 0}); 
     }

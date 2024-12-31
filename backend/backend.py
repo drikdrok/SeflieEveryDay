@@ -15,10 +15,11 @@ CORS(app)
 
 # Set the folder where the images will be saved
 UPLOAD_FOLDER = 'uploaded_images'
+app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024 * 32  # 1 GB
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Allowed file extensions
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
 # Function to check if the file is allowed
 def allowed_file(filename):
@@ -62,11 +63,17 @@ def upload_images():
 
     uploaded_files = []
     
+    job_id = "some_unique_id"  # you can generate a random UUID
+    progress_dict[job_id] = 0
+
+    if not os.path.exists(UPLOAD_FOLDER + "/" + job_id):
+        os.makedirs(UPLOAD_FOLDER + "/" + job_id)
+    
     for file in files:
         # Check if the file has an allowed extension
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'] + "/" + job_id, filename)
 
             # Save the image
             file.save(filepath)
@@ -83,8 +90,6 @@ def upload_images():
             return jsonify({"error": f"Invalid file type: {file.filename}"}), 400
 
      # 2. "Start" the task in a separate thread
-    job_id = "some_unique_id"  # you can generate a random UUID
-    progress_dict[job_id] = 0
 
     # Start a separate thread to handle the long processing
     thread = Thread(target=analyze_images, args=(job_id, uploaded_files))
@@ -108,10 +113,24 @@ def get_info(job_id):
     if job_id not in finished_dict:
         return jsonify({"error": "Invalid job_id"}), 404
 
-    return jsonify({
+    data = finished_dict.pop(job_id)
+    output = {
         "message": "Images uploaded successfully",
-        "data": finished_dict[job_id]
-    }), 200
+        "data": data
+    }
+
+    progress_dict.pop(job_id)
+
+    #Cleanup
+    for file in data["files"]:
+        os.remove(file)
+
+    if os.path.exists(UPLOAD_FOLDER + "/" + job_id):
+        os.rmdir(UPLOAD_FOLDER + "/" + job_id)
+        
+    
+
+    return output
 
 
 
