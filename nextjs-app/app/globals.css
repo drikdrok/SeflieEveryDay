@@ -2,3 +2,28 @@
 @tailwind components;
 @tailwind utilities;
 
+.image-container {
+    position: relative;
+    display: inline-block;
+    margin: 10px;
+}
+.delete-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 35px;
+    height: 35px;
+    background-color: red;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    color: white;
+    font-weight: bold;
+}
+.image-container:hover .delete-btn {
+    opacity: 1;
+}

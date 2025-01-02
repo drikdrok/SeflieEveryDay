@@ -50,6 +50,21 @@ export default function Home() {
         }
     }, [eyePositions]);
 
+    const deleteFile = (index: number) => {
+        const updatedFiles = [...files];
+        const updatedFileURLs = [...fileURLS];
+        updatedFiles.splice(index, 1);
+        updatedFileURLs.splice(index, 1);
+        
+        if (eyePositions !== null) {
+            const updatedEyePositions = [...eyePositions];
+            updatedEyePositions.splice(index, 1);
+            setEyePositions(updatedEyePositions);
+        }
+
+        setFiles(updatedFiles);
+    };
+
     const onDrop = async (acceptedFiles: File[]) => {
         const compressedFiles: File[] = [];
         const totalFiles = acceptedFiles.length;
@@ -169,7 +184,7 @@ export default function Home() {
 
     return (
         <div>
-            <h1>Seflie Every Day</h1>
+            <h1 className="ml-4 mt-4 text-4xl font-bold text-gray-900 leading-tight tracking-wide">Seflie Every Day</h1>
             <div style={{ display: 'flex', gap: '2rem', padding: '2rem' }}>
                 <div className='flex-shrink-1 min-w-80  w-80 p-6 bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700'>
                     <h1>Settings</h1>
@@ -240,7 +255,7 @@ export default function Home() {
 
                 <div style={{ display: 'flex', flexWrap: "wrap", gap: '10px', overflowY: 'auto', maxHeight: '500px' }}>
                     {fileURLS.map((url, index) => (
-                        <div key={index} style={{}}>
+                        <div key={index} className="image-container">
                             <Image
                                 src={url}
                                 alt={`Uploaded image ${index}`}
@@ -250,6 +265,7 @@ export default function Home() {
                                 id={`image${index}`}
                                 loading='lazy'
                             />
+                            <img src="/trash.png" className="delete-btn" onClick={() => deleteFile(index)} />
                         </div>
                     ))}
                 </div>
