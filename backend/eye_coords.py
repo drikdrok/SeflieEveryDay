@@ -12,7 +12,6 @@ net = cv2.dnn.readNetFromCaffe(
 predictor = dlib.shape_predictor("detection/shape_predictor_68_face_landmarks.dat")
 
 def draw_eyes_on_image(image_path):
-    # Load the image from the given path
     frame = cv2.imread(image_path)
     h, w = frame.shape[:2]
 
@@ -21,7 +20,6 @@ def draw_eyes_on_image(image_path):
     net.setInput(blob)
     detections = net.forward()
 
-    # Loop through detections
     for i in range(detections.shape[2]):
         confidence = detections[0, 0, i, 2]
         if confidence > 0.5:  # Adjust confidence threshold as needed
@@ -36,11 +34,11 @@ def draw_eyes_on_image(image_path):
             # Predict facial landmarks
             landmarks = predictor(face_gray, dlib_rect)
 
-            # Draw circles around the eyes (landmark points 36-41 for left eye, 42-47 for right eye)
-            for n in range(36, 48):  # Points for both eyes
-                x_eye = landmarks.part(n).x
-                y_eye = landmarks.part(n).y
-                cv2.circle(frame, (x_eye, y_eye), 2, (0, 255, 0), -1)
+            # landmark points 36-41 for left eye, 42-47 for right eye
+            #for n in range(36, 48):  # Points for both eyes
+            #    x_eye = landmarks.part(n).x
+            #    y_eye = landmarks.part(n).y
+            #    cv2.circle(frame, (x_eye, y_eye), 2, (0, 255, 0), -1)
 
 
             left_eye_center = ((landmarks.part(36).x + landmarks.part(39).x) // 2, (landmarks.part(36).y + landmarks.part(39).y) // 2)

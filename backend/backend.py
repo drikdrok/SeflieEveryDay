@@ -2,7 +2,8 @@ from flask import Flask, request, jsonify
 from werkzeug.utils import secure_filename
 import os
 from PIL import Image
-import io
+
+import uuid
 
 from threading import Thread
 
@@ -13,9 +14,8 @@ import eye_coords
 app = Flask(__name__)
 CORS(app)
 
-# Set the folder where the images will be saved
 UPLOAD_FOLDER = 'uploaded_images'
-app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024 * 32  # 1 GB
+app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024  # 1 GB
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Allowed file extensions
@@ -49,7 +49,6 @@ def analyze_images(job_id, files):
     finished_dict[job_id] = {"files": files, "eye_position": eye_positions}
     return
 
-# Route to handle multiple image uploads
 @app.route('/upload_images', methods=['POST'])
 def upload_images():
     # Check if the request contains files
@@ -63,7 +62,7 @@ def upload_images():
 
     uploaded_files = []
     
-    job_id = "some_unique_id"  # you can generate a random UUID
+    job_id = uuid.uuid4().hex
     progress_dict[job_id] = 0
 
     if not os.path.exists(UPLOAD_FOLDER + "/" + job_id):
@@ -78,7 +77,6 @@ def upload_images():
             # Save the image
             file.save(filepath)
 
-            # Optionally, you can open the image using PIL to process or validate it
             try:
                 img = Image.open(filepath)
                 img.verify()  # Verify that it is a valid image
@@ -98,7 +96,7 @@ def upload_images():
     # 3. Return the job_id immediately
     return jsonify({"job_id": job_id}), 200
 
-@app.route('/progress/<job_id>', methods=['GET'])
+@app.route('/get_progress/<job_id>', methods=['GET'])
 def get_progress(job_id):
     if job_id not in progress_dict:
         return jsonify({"error": "Invalid job_id"}), 404
