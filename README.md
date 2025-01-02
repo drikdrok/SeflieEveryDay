@@ -2,6 +2,7 @@
 
 Web app that stitches together selfies into a timelapse using AI.
 
+<img src="/Screenshots/Screenshot_1.png" height="350" />
 <img src="/Screenshots/movember.gif" width="250" />
 
 # Setup
